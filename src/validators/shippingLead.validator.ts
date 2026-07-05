@@ -1,0 +1,35 @@
+import { z } from "zod";
+import { commonLeadSchema } from "./commonLead.validator";
+
+export const shippingLeadSchema = commonLeadSchema.extend({
+  shipperName: z.string().optional(),
+  shipperContactPerson: z.string().optional(),
+  shipperAddress: z.string().optional(),
+  originCity: z.string().optional(),
+  originStateProvince: z.string().optional(),
+  originPostalCode: z.string().optional(),
+  originDestinationCountry: z.string().optional(),
+  recipientName: z.string().optional(),
+  recipientContactPerson: z.string().optional(),
+  recipientPhone: z.string().optional(),
+  recipientEmail: z.string().optional(),
+  recipientAddress: z.string().optional(),
+  department: z.string().optional(),
+  destinationCity: z.string().optional(),
+  destinationStateProvince: z.string().optional(),
+  destinationPostalCode: z.string().optional(),
+  finalDestinationCountry: z.string().optional(),
+  itemDescription: z.string().optional(),
+  numberOfPackages: z.number().optional(),
+  weight: z.number().optional(),
+  dimensions: z.string().optional(),
+  declaredValue: z.number().optional(),
+  shippingMethod: z.string().optional(),
+  urgentShipping: z.string().optional(),
+  trackingRequired: z.string().optional(),
+  insurance: z.string().optional(),
+  preferredPickupDate: z.string().optional(),
+  preferredDeliveryDate: z.string().optional(),
+  attachments: z.array(z.unknown()).optional(),
+  additionalNotes: z.string().optional()
+});
