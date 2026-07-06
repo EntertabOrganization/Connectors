@@ -1,8 +1,11 @@
 import { Request, Response } from "express";
+import { quickbooksConfig } from "../config/quickbooks.config";
 import {
+  ensureQuickBooksConnection,
   exchangeQuickBooksCode,
   getQuickBooksAuthUrl,
-  refreshQuickBooksToken
+  refreshQuickBooksToken,
+  storeQuickBooksTokens
 } from "../services/quickbooks/quickbooks.auth.service";
 import {
   createQuickBooksCustomer,
@@ -24,6 +27,26 @@ export async function getAuthUrl(_req: Request, res: Response) {
   res.json(successResponse({ url: getQuickBooksAuthUrl() }));
 }
 
+export async function connectQuickBooks(_req: Request, res: Response) {
+  res.redirect(getQuickBooksAuthUrl());
+}
+
+export async function getConnectionStatus(_req: Request, res: Response) {
+  const hasAccessToken = Boolean(quickbooksConfig.accessToken);
+  const hasRefreshToken = Boolean(quickbooksConfig.refreshToken);
+  const hasRealmId = Boolean(quickbooksConfig.realmId);
+
+  res.json(
+    successResponse({
+      connected: hasRefreshToken && hasRealmId,
+      environment: quickbooksConfig.environment,
+      hasAccessToken,
+      hasRefreshToken,
+      hasRealmId
+    })
+  );
+}
+
 export async function handleCallback(req: Request, res: Response) {
   const code = req.query.code?.toString();
   const realmId = req.query.realmId?.toString();
@@ -37,25 +60,43 @@ export async function handleCallback(req: Request, res: Response) {
   }
 
   const tokenData = await exchangeQuickBooksCode(code);
+  await storeQuickBooksTokens(tokenData, realmId);
+  const acceptsHtml = req.headers.accept?.includes("text/html");
+
+  if (acceptsHtml) {
+    return res.redirect("/api/v1/docs?quickbooks=connected");
+  }
+
   res.json(
     successResponse({
       state,
       realmId,
       tokens: tokenData,
       instructions:
-        "Persist these tokens manually in your secret store or environment for the MVP."
+        "QuickBooks tokens were stored locally. You can now call the customer and invoice endpoints directly."
     })
   );
 }
 
 export async function refreshToken(req: Request, res: Response) {
   const tokenData = await refreshQuickBooksToken(req.body?.refreshToken);
+  await storeQuickBooksTokens(tokenData);
   res.json(successResponse(tokenData));
 }
 
 export async function createCustomer(req: Request, res: Response) {
   const customer = await createQuickBooksCustomer(req.body);
   res.status(201).json(successResponse(customer));
+}
+
+export async function ensureConnection(_req: Request, res: Response) {
+  const connection = await ensureQuickBooksConnection();
+  res.json(
+    successResponse({
+      connected: true,
+      realmId: connection.realmId
+    })
+  );
 }
 
 export async function listCustomers(req: Request, res: Response) {

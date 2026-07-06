@@ -1,22 +1,26 @@
 import axios, { AxiosInstance } from "axios";
 import { quickbooksConfig } from "../../config/quickbooks.config";
 import { HttpError } from "../../utils/http-error";
+import {
+  ensureQuickBooksConnection,
+  refreshQuickBooksToken
+} from "./quickbooks.auth.service";
+import { persistQuickBooksCredentials, setQuickBooksCredentials } from "./quickbooks.credentials";
 
-export function createQuickBooksClient(options?: {
+export async function createQuickBooksClient(options?: {
   accessToken?: string;
   realmId?: string;
-}): AxiosInstance {
-  const accessToken = options?.accessToken ?? quickbooksConfig.accessToken;
-  const realmId = options?.realmId ?? quickbooksConfig.realmId;
+}): Promise<AxiosInstance> {
+  const connection = await ensureQuickBooksConnection(options);
 
-  if (!accessToken || !realmId) {
+  if (!connection.accessToken || !connection.realmId) {
     throw new HttpError(503, "QuickBooks access token or realm ID is missing");
   }
 
-  return axios.create({
-    baseURL: `${quickbooksConfig.apiBaseUrl}/v3/company/${realmId}`,
+  const client = axios.create({
+    baseURL: `${quickbooksConfig.apiBaseUrl}/v3/company/${connection.realmId}`,
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${connection.accessToken}`,
       Accept: "application/json",
       "Content-Type": "application/json"
     },
@@ -24,4 +28,39 @@ export function createQuickBooksClient(options?: {
       minorversion: quickbooksConfig.minorVersion
     }
   });
+
+  client.interceptors.response.use(undefined, async (error) => {
+    if (
+      !axios.isAxiosError(error) ||
+      error.response?.status !== 401 ||
+      !quickbooksConfig.refreshToken ||
+      !error.config ||
+      (error.config as { _quickBooksRetry?: boolean })._quickBooksRetry
+    ) {
+      throw error;
+    }
+
+    const tokenData = await refreshQuickBooksToken(quickbooksConfig.refreshToken);
+    const refreshedAccessToken = tokenData.access_token;
+    const refreshedRefreshToken = tokenData.refresh_token ?? quickbooksConfig.refreshToken;
+
+    setQuickBooksCredentials({
+      accessToken: refreshedAccessToken,
+      refreshToken: refreshedRefreshToken,
+      realmId: connection.realmId
+    });
+    await persistQuickBooksCredentials({
+      accessToken: refreshedAccessToken,
+      refreshToken: refreshedRefreshToken,
+      realmId: connection.realmId
+    });
+
+    error.config.headers = error.config.headers ?? {};
+    error.config.headers.Authorization = `Bearer ${refreshedAccessToken}`;
+    (error.config as { _quickBooksRetry?: boolean })._quickBooksRetry = true;
+
+    return client.request(error.config);
+  });
+
+  return client;
 }

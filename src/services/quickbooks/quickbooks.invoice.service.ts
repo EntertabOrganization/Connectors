@@ -12,7 +12,7 @@ export async function createQuickBooksInvoice(payload: {
   dueDate?: string;
   privateNote?: string;
 }) {
-  const client = createQuickBooksClient();
+  const client = await createQuickBooksClient();
   const response = await client.post("/invoice", {
     CustomerRef: { value: payload.customerId },
     DueDate: payload.dueDate,
@@ -37,7 +37,7 @@ export async function listQuickBooksInvoices(params: {
   limit?: number;
   customerId?: string;
 }) {
-  const client = createQuickBooksClient();
+  const client = await createQuickBooksClient();
   const page = Math.max(params.page ?? 1, 1);
   const limit = Math.min(Math.max(params.limit ?? 20, 1), 100);
   const startPosition = (page - 1) * limit + 1;
@@ -54,7 +54,7 @@ export async function listQuickBooksInvoices(params: {
 }
 
 export async function getQuickBooksInvoiceById(id: string) {
-  const client = createQuickBooksClient();
+  const client = await createQuickBooksClient();
   const response = await client.get(`/invoice/${id}`);
   return normalizeQuickBooksInvoice(response.data.Invoice);
 }

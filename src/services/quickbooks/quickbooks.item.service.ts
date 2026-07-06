@@ -8,7 +8,7 @@ export async function createQuickBooksItem(payload: {
   incomeAccountRef?: string;
   type?: string;
 }) {
-  const client = createQuickBooksClient();
+  const client = await createQuickBooksClient();
   const response = await client.post("/item", {
     Name: payload.name,
     Description: payload.description,
@@ -26,7 +26,7 @@ export async function listQuickBooksItems(params: {
   page?: number;
   limit?: number;
 }) {
-  const client = createQuickBooksClient();
+  const client = await createQuickBooksClient();
   const page = Math.max(params.page ?? 1, 1);
   const limit = Math.min(Math.max(params.limit ?? 20, 1), 100);
   const startPosition = (page - 1) * limit + 1;
@@ -40,7 +40,7 @@ export async function listQuickBooksItems(params: {
 }
 
 export async function getQuickBooksItemById(id: string) {
-  const client = createQuickBooksClient();
+  const client = await createQuickBooksClient();
   const response = await client.get(`/item/${id}`);
   return normalizeQuickBooksItem(response.data.Item);
 }

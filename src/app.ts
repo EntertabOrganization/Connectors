@@ -2,6 +2,7 @@ import express from "express";
 import swaggerUi from "swagger-ui-express";
 import { errorHandler, notFoundHandler } from "./middlewares/error.middleware";
 import { requestLogger } from "./middlewares/request-logger.middleware";
+import { handleCallback } from "./controllers/quickbooks.controller";
 import healthRoutes from "./routes/health.routes";
 import quickbooksRoutes from "./routes/quickbooks.routes";
 import salesforceRoutes from "./routes/salesforce.routes";
@@ -25,6 +26,7 @@ export function createApp() {
   app.use("/api/v1/health", healthRoutes);
   app.use("/api/v1/salesforce", salesforceRoutes);
   app.use("/api/v1/quickbooks", quickbooksRoutes);
+  app.get("/api/quickbooks/auth/callback", handleCallback);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -372,6 +372,29 @@ export const swaggerDocument = {
         responses: { "200": { description: "Auth URL" } }
       }
     },
+    "/quickbooks/connect": {
+      get: {
+        tags: ["Quick Box"],
+        summary: "Redirect to QuickBooks authorization",
+        description:
+          "Opens the Intuit consent screen. Complete this once, then the app stores the tokens and realm ID locally for direct endpoint usage.",
+        responses: { "302": { description: "Redirects to Intuit OAuth consent" } }
+      },
+      post: {
+        tags: ["Quick Box"],
+        summary: "Ensure QuickBooks connection is ready",
+        description:
+          "Uses the stored refresh token to obtain a current access token. Returns 503 with an authorization URL if QuickBooks has not been connected yet.",
+        responses: { "200": { description: "QuickBooks connection is ready" } }
+      }
+    },
+    "/quickbooks/status": {
+      get: {
+        tags: ["Quick Box"],
+        summary: "Get QuickBooks connection status",
+        responses: { "200": { description: "Connection status returned" } }
+      }
+    },
     "/quickbooks/callback": {
       get: {
         tags: ["Quick Box"],

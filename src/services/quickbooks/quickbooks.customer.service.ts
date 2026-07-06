@@ -9,7 +9,7 @@ export async function createQuickBooksCustomer(payload: {
   primaryPhone?: string;
   companyName?: string;
 }) {
-  const client = createQuickBooksClient();
+  const client = await createQuickBooksClient();
   const response = await client.post("/customer", {
     DisplayName: payload.displayName,
     GivenName: payload.givenName,
@@ -31,7 +31,7 @@ export async function listQuickBooksCustomers(params: {
   limit?: number;
   search?: string;
 }) {
-  const client = createQuickBooksClient();
+  const client = await createQuickBooksClient();
   const page = Math.max(params.page ?? 1, 1);
   const limit = Math.min(Math.max(params.limit ?? 20, 1), 100);
   const startPosition = (page - 1) * limit + 1;
@@ -48,7 +48,7 @@ export async function listQuickBooksCustomers(params: {
 }
 
 export async function getQuickBooksCustomerById(id: string) {
-  const client = createQuickBooksClient();
+  const client = await createQuickBooksClient();
   const response = await client.get(`/customer/${id}`);
   return normalizeQuickBooksCustomer(response.data.Customer);
 }
