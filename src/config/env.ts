@@ -19,7 +19,10 @@ const envSchema = z.object({
       }
       return value === "true";
     }),
-  QUICKBOOKS_ENVIRONMENT: z.enum(["sandbox", "production"]).default("sandbox"),
+  QUICKBOOKS_ENVIRONMENT: z
+    .enum(["sandbox", "production", "development"])
+    .default("sandbox")
+    .transform((value) => (value === "development" ? "sandbox" : value)),
   QUICKBOOKS_CLIENT_ID: z.string().optional(),
   QUICKBOOKS_CLIENT_SECRET: z.string().optional(),
   QUICKBOOKS_REDIRECT_URI: z.string().url().optional(),

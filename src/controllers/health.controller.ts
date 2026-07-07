@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { isQuickBooksConfigured, quickbooksConfig } from "../config/quickbooks.config";
 import { isSalesforceConfigured } from "../config/salesforce.config";
+import { getQuickBooksConnectionDiagnostics } from "../services/quickbooks/quickbooks.auth.service";
 import { getSalesforceAccessToken } from "../services/salesforce/salesforce.auth.service";
 
 export async function getHealth(_req: Request, res: Response) {
@@ -34,6 +35,7 @@ export async function getIntegrationHealth(_req: Request, res: Response) {
     integrations: {
       salesforce,
       quickbooks
-    }
+    },
+    quickbooksDiagnostics: getQuickBooksConnectionDiagnostics()
   });
 }

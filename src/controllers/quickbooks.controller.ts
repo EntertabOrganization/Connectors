@@ -3,6 +3,7 @@ import { quickbooksConfig } from "../config/quickbooks.config";
 import {
   ensureQuickBooksConnection,
   exchangeQuickBooksCode,
+  getQuickBooksConnectionDiagnostics,
   getQuickBooksAuthUrl,
   refreshQuickBooksToken,
   storeQuickBooksTokens
@@ -17,6 +18,7 @@ import {
   getQuickBooksInvoiceById,
   listQuickBooksInvoices
 } from "../services/quickbooks/quickbooks.invoice.service";
+import { logger } from "../utils/logger";
 import { successResponse } from "../utils/response.util";
 
 function getRouteParam(value: string | string[] | undefined): string {
@@ -24,11 +26,20 @@ function getRouteParam(value: string | string[] | undefined): string {
 }
 
 export async function getAuthUrl(_req: Request, res: Response) {
-  res.json(successResponse({ url: getQuickBooksAuthUrl() }));
+  const url = getQuickBooksAuthUrl();
+  logger.info("quickbooks.auth_url.requested", {
+    diagnostics: getQuickBooksConnectionDiagnostics()
+  });
+  res.json(successResponse({ url }));
 }
 
 export async function connectQuickBooks(_req: Request, res: Response) {
-  res.redirect(getQuickBooksAuthUrl());
+  const url = getQuickBooksAuthUrl();
+  logger.info("quickbooks.connect.redirecting", {
+    authUrl: url,
+    diagnostics: getQuickBooksConnectionDiagnostics()
+  });
+  res.redirect(url);
 }
 
 export async function getConnectionStatus(_req: Request, res: Response) {
@@ -42,7 +53,12 @@ export async function getConnectionStatus(_req: Request, res: Response) {
       environment: quickbooksConfig.environment,
       hasAccessToken,
       hasRefreshToken,
-      hasRealmId
+      hasRealmId,
+      diagnostics: getQuickBooksConnectionDiagnostics(),
+      nextAction:
+        hasRefreshToken && hasRealmId
+          ? "QuickBooks is connected."
+          : "Open /api/v1/quickbooks/connect and complete the Intuit OAuth approval flow."
     })
   );
 }
@@ -51,6 +67,12 @@ export async function handleCallback(req: Request, res: Response) {
   const code = req.query.code?.toString();
   const realmId = req.query.realmId?.toString();
   const state = req.query.state?.toString();
+
+  logger.info("quickbooks.callback.received", {
+    hasCode: Boolean(code),
+    hasRealmId: Boolean(realmId),
+    state
+  });
 
   if (!code) {
     return res.status(400).json({
@@ -61,6 +83,11 @@ export async function handleCallback(req: Request, res: Response) {
 
   const tokenData = await exchangeQuickBooksCode(code);
   await storeQuickBooksTokens(tokenData, realmId);
+  logger.info("quickbooks.callback.stored_credentials", {
+    hasAccessToken: Boolean(tokenData.access_token),
+    hasRefreshToken: Boolean(tokenData.refresh_token),
+    realmId
+  });
   const acceptsHtml = req.headers.accept?.includes("text/html");
 
   if (acceptsHtml) {
@@ -79,6 +106,9 @@ export async function handleCallback(req: Request, res: Response) {
 }
 
 export async function refreshToken(req: Request, res: Response) {
+  logger.info("quickbooks.refresh_token.requested", {
+    hasRefreshTokenInBody: Boolean(req.body?.refreshToken)
+  });
   const tokenData = await refreshQuickBooksToken(req.body?.refreshToken);
   await storeQuickBooksTokens(tokenData);
   res.json(successResponse(tokenData));
@@ -90,6 +120,9 @@ export async function createCustomer(req: Request, res: Response) {
 }
 
 export async function ensureConnection(_req: Request, res: Response) {
+  logger.info("quickbooks.ensure_connection.requested", {
+    diagnostics: getQuickBooksConnectionDiagnostics()
+  });
   const connection = await ensureQuickBooksConnection();
   res.json(
     successResponse({
