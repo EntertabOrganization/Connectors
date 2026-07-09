@@ -47,6 +47,50 @@ describe("app routes", () => {
     }
   });
 
+  it("serves Swagger from the explicit OpenAPI JSON URL without caching", async () => {
+    const app = createApp();
+    const noCache = "no-store, no-cache, must-revalidate, proxy-revalidate";
+
+    const documentResponse = await request(app).get("/api/v1/docs.json");
+    expect(documentResponse.status).toBe(200);
+    expect(documentResponse.type).toBe("application/json");
+    expect(documentResponse.body.openapi).toBe("3.0.0");
+    expect(documentResponse.headers["cache-control"]).toBe(noCache);
+    expect(documentResponse.headers.pragma).toBe("no-cache");
+    expect(documentResponse.headers.expires).toBe("0");
+
+    const initResponse = await request(app).get("/api/v1/docs/swagger-ui-init.js");
+    expect(initResponse.status).toBe(200);
+    expect(initResponse.text).toContain('"url": "/api/v1/docs.json"');
+    expect(initResponse.text).not.toContain("localhost");
+    expect(initResponse.headers["cache-control"]).toBe(noCache);
+
+    for (const path of [
+      "/api/v1/docs",
+      "/api/v1/docs/?v=latest",
+      "/api/v1/docs/swagger-ui-bundle.js",
+      "/api/v1/docs/swagger-ui.css",
+      "/api/v1/docs/swagger-ui-standalone-preset.js"
+    ]) {
+      const response = await request(app).get(path);
+      expect(response.status).toBeGreaterThanOrEqual(200);
+      expect(response.status).toBeLessThan(400);
+      expect(response.headers["cache-control"]).toBe(noCache);
+      expect(response.headers.pragma).toBe("no-cache");
+      expect(response.headers.expires).toBe("0");
+    }
+  });
+
+  it("returns Swagger health information", async () => {
+    const response = await request(createApp()).get("/api/v1/docs-health");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      docs: true,
+      openapiJson: "/api/v1/docs.json"
+    });
+  });
+
   it("exposes the QuickBooks auth callback route on /api/v1/quickbooks/auth/callback", async () => {
     const response = await request(createApp()).get("/api/v1/quickbooks/auth/callback");
 

@@ -8,6 +8,12 @@ import quickbooksRoutes from "./routes/quickbooks.routes";
 import salesforceRoutes from "./routes/salesforce.routes";
 import { swaggerDocument } from "./docs/swagger";
 
+const swaggerNoCacheHeaders = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0"
+};
+
 export function createApp() {
   const app = express();
 
@@ -25,11 +31,31 @@ export function createApp() {
     res.redirect("/api/v1/docs");
   });
 
+  app.use(["/api/v1/docs", "/api/v1/docs.json"], (_req, res, next) => {
+    res.set(swaggerNoCacheHeaders);
+    next();
+  });
+
   app.get("/api/v1/docs.json", (_req, res) => {
     res.json(swaggerDocument);
   });
 
-  app.use("/api/v1/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  app.get("/api/v1/docs-health", (_req, res) => {
+    res.json({
+      docs: true,
+      openapiJson: "/api/v1/docs.json"
+    });
+  });
+
+  app.use(
+    "/api/v1/docs",
+    swaggerUi.serve,
+    swaggerUi.setup(null, {
+      swaggerOptions: {
+        url: "/api/v1/docs.json"
+      }
+    })
+  );
   app.use("/api/v1/health", healthRoutes);
   app.use("/api/v1/salesforce", salesforceRoutes);
   app.use("/api/v1/quickbooks", quickbooksRoutes);
