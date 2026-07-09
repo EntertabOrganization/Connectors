@@ -59,22 +59,33 @@ describe("app routes", () => {
     expect(documentResponse.headers.pragma).toBe("no-cache");
     expect(documentResponse.headers.expires).toBe("0");
 
-    const initResponse = await request(app).get("/api/v1/docs/swagger-ui-init.js");
-    expect(initResponse.status).toBe(200);
-    expect(initResponse.text).toContain('"url": "/api/v1/docs.json"');
-    expect(initResponse.text).not.toContain("localhost");
-    expect(initResponse.headers["cache-control"]).toBe(noCache);
+    for (const path of ["/api/v1/docs", "/api/v1/docs/", "/api/v1/docs/?v=latest"]) {
+      const response = await request(app).get(path);
+      expect(response.status).toBe(200);
+      expect(response.type).toBe("text/html");
+      expect(response.text).toContain("https://unpkg.com/swagger-ui-dist/swagger-ui.css");
+      expect(response.text).toContain("https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js");
+      expect(response.text).toContain(
+        "https://unpkg.com/swagger-ui-dist/swagger-ui-standalone-preset.js"
+      );
+      expect(response.text).toContain('url: "/api/v1/docs.json"');
+      expect(response.text).not.toContain("localhost");
+      expect(response.headers["cache-control"]).toBe(noCache);
+      expect(response.headers.pragma).toBe("no-cache");
+      expect(response.headers.expires).toBe("0");
+    }
 
     for (const path of [
-      "/api/v1/docs",
-      "/api/v1/docs/?v=latest",
       "/api/v1/docs/swagger-ui-bundle.js",
       "/api/v1/docs/swagger-ui.css",
-      "/api/v1/docs/swagger-ui-standalone-preset.js"
+      "/api/v1/docs/swagger-ui-standalone-preset.js",
+      "/api/v1/docs/swagger-ui-init.js"
     ]) {
       const response = await request(app).get(path);
-      expect(response.status).toBeGreaterThanOrEqual(200);
-      expect(response.status).toBeLessThan(400);
+      expect(response.status).toBe(404);
+      expect(response.type).toBe("application/json");
+      expect(response.body.error).toBe("Swagger UI assets are served from CDN");
+      expect(response.body.openapiJson).toBe("/api/v1/docs.json");
       expect(response.headers["cache-control"]).toBe(noCache);
       expect(response.headers.pragma).toBe("no-cache");
       expect(response.headers.expires).toBe("0");
