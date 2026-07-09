@@ -33,6 +33,27 @@ describe("app routes", () => {
     expect(response.body.integrations.salesforce).toBeTypeOf("string");
   });
 
+  it("returns 204 for root favicon requests", async () => {
+    const app = createApp();
+
+    for (const path of [
+      "/favicon.ico",
+      "/favicon.png",
+      "/favicon-16x16.png",
+      "/favicon-32x32.png"
+    ]) {
+      const response = await request(app).get(path);
+      expect(response.status).toBe(204);
+    }
+  });
+
+  it("exposes the QuickBooks auth callback route on /api/v1/quickbooks/auth/callback", async () => {
+    const response = await request(createApp()).get("/api/v1/quickbooks/auth/callback");
+
+    expect(response.status).toBe(400);
+    expect(response.body.success).toBe(false);
+  });
+
   it("returns 404 for unknown routes", async () => {
     const response = await request(createApp()).get("/api/v1/missing");
 

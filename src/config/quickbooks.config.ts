@@ -22,10 +22,16 @@ export const quickbooksConfig = {
   accessToken: env.QUICKBOOKS_ACCESS_TOKEN,
   refreshToken: env.QUICKBOOKS_REFRESH_TOKEN,
   realmId: env.QUICKBOOKS_REALM_ID,
+  accessTokenExpiresAt: env.QUICKBOOKS_ACCESS_TOKEN_EXPIRES_AT,
+  refreshTokenExpiresAt: env.QUICKBOOKS_REFRESH_TOKEN_EXPIRES_AT,
+  companyName: env.QUICKBOOKS_COMPANY_NAME,
   scopes: env.QUICKBOOKS_SCOPES.split(/\s+/).filter(Boolean),
   apiBaseUrl: baseUrlByEnvironment[env.QUICKBOOKS_ENVIRONMENT],
   authBaseUrl: authBaseUrlByEnvironment[env.QUICKBOOKS_ENVIRONMENT],
-  tokenUrl: tokenBaseUrl
+  tokenUrl: tokenBaseUrl,
+  kvRestApiUrl: env.KV_REST_API_URL,
+  kvRestApiToken: env.KV_REST_API_TOKEN,
+  isVercel: env.VERCEL === "1"
 };
 
 export function isQuickBooksConfigured(): boolean {

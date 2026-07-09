@@ -26,6 +26,7 @@ router.get("/connect", connectQuickBooks);
 router.get("/status", getConnectionStatus);
 router.get("/auth-url", getAuthUrl);
 router.get("/callback", handleCallback);
+router.get("/auth/callback", handleCallback);
 router.post("/connect", ensureConnection);
 router.post("/refresh-token", validateRequest(refreshQuickBooksTokenSchema), refreshToken);
 router.post("/customers", validateRequest(quickBooksCustomerSchema), createCustomer);

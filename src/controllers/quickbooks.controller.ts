@@ -8,6 +8,7 @@ import {
   refreshQuickBooksToken,
   storeQuickBooksTokens
 } from "../services/quickbooks/quickbooks.auth.service";
+import { hydrateQuickBooksCredentials } from "../services/quickbooks/quickbooks.credentials";
 import {
   createQuickBooksCustomer,
   getQuickBooksCustomerById,
@@ -43,6 +44,8 @@ export async function connectQuickBooks(_req: Request, res: Response) {
 }
 
 export async function getConnectionStatus(_req: Request, res: Response) {
+  await hydrateQuickBooksCredentials();
+
   const hasAccessToken = Boolean(quickbooksConfig.accessToken);
   const hasRefreshToken = Boolean(quickbooksConfig.refreshToken);
   const hasRealmId = Boolean(quickbooksConfig.realmId);
@@ -54,6 +57,10 @@ export async function getConnectionStatus(_req: Request, res: Response) {
       hasAccessToken,
       hasRefreshToken,
       hasRealmId,
+      realmId: quickbooksConfig.realmId,
+      companyName: quickbooksConfig.companyName,
+      accessTokenExpiresAt: quickbooksConfig.accessTokenExpiresAt,
+      refreshTokenExpiresAt: quickbooksConfig.refreshTokenExpiresAt,
       diagnostics: getQuickBooksConnectionDiagnostics(),
       nextAction:
         hasRefreshToken && hasRealmId
@@ -98,9 +105,8 @@ export async function handleCallback(req: Request, res: Response) {
     successResponse({
       state,
       realmId,
-      tokens: tokenData,
       instructions:
-        "QuickBooks tokens were stored locally. You can now call the customer and invoice endpoints directly."
+        "QuickBooks credentials were stored in persistent storage. You can now call the customer and invoice endpoints directly."
     })
   );
 }
@@ -127,7 +133,8 @@ export async function ensureConnection(_req: Request, res: Response) {
   res.json(
     successResponse({
       connected: true,
-      realmId: connection.realmId
+      realmId: connection.realmId,
+      companyName: quickbooksConfig.companyName
     })
   );
 }

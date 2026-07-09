@@ -30,7 +30,13 @@ const envSchema = z.object({
   QUICKBOOKS_ACCESS_TOKEN: z.string().optional(),
   QUICKBOOKS_REFRESH_TOKEN: z.string().optional(),
   QUICKBOOKS_REALM_ID: z.string().optional(),
-  QUICKBOOKS_SCOPES: z.string().default("com.intuit.quickbooks.accounting")
+  QUICKBOOKS_ACCESS_TOKEN_EXPIRES_AT: z.string().datetime().optional(),
+  QUICKBOOKS_REFRESH_TOKEN_EXPIRES_AT: z.string().datetime().optional(),
+  QUICKBOOKS_COMPANY_NAME: z.string().optional(),
+  QUICKBOOKS_SCOPES: z.string().default("com.intuit.quickbooks.accounting"),
+  KV_REST_API_URL: z.string().url().optional(),
+  KV_REST_API_TOKEN: z.string().optional(),
+  VERCEL: z.string().optional()
 });
 
 const parsed = envSchema.safeParse(process.env);

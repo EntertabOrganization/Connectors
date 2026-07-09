@@ -377,7 +377,7 @@ export const swaggerDocument = {
         tags: ["Quick Box"],
         summary: "Redirect to QuickBooks authorization",
         description:
-          "Opens the Intuit consent screen. Complete this once, then the app stores the tokens and realm ID locally for direct endpoint usage.",
+          "Opens the Intuit consent screen. Complete this once, then the app stores the tokens and realm ID in persistent storage for direct endpoint usage on Vercel.",
         responses: { "302": { description: "Redirects to Intuit OAuth consent" } }
       },
       post: {
@@ -395,7 +395,7 @@ export const swaggerDocument = {
         responses: { "200": { description: "Connection status returned" } }
       }
     },
-    "/quickbooks/callback": {
+    "/quickbooks/auth/callback": {
       get: {
         tags: ["Quick Box"],
         summary: "Handle QuickBooks OAuth callback",

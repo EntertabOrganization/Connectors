@@ -11,6 +11,13 @@ import { swaggerDocument } from "./docs/swagger";
 export function createApp() {
   const app = express();
 
+  app.get(
+    ["/favicon.ico", "/favicon.png", "/favicon-16x16.png", "/favicon-32x32.png"],
+    (_req, res) => {
+      res.status(204).end();
+    }
+  );
+
   app.use(express.json());
   app.use(requestLogger);
 

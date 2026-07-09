@@ -6,6 +6,7 @@ import {
   refreshQuickBooksToken
 } from "./quickbooks.auth.service";
 import { persistQuickBooksCredentials, setQuickBooksCredentials } from "./quickbooks.credentials";
+import { logQuickBooksIntuitFailure } from "./quickbooks.observability";
 
 export async function createQuickBooksClient(options?: {
   accessToken?: string;
@@ -30,6 +31,12 @@ export async function createQuickBooksClient(options?: {
   });
 
   client.interceptors.response.use(undefined, async (error) => {
+    if (axios.isAxiosError(error)) {
+      logQuickBooksIntuitFailure("quickbooks.api.request.failed", error, {
+        realmId: connection.realmId
+      });
+    }
+
     if (
       !axios.isAxiosError(error) ||
       error.response?.status !== 401 ||
@@ -47,12 +54,38 @@ export async function createQuickBooksClient(options?: {
     setQuickBooksCredentials({
       accessToken: refreshedAccessToken,
       refreshToken: refreshedRefreshToken,
-      realmId: connection.realmId
+      realmId: connection.realmId,
+      accessTokenExpiresAt:
+        typeof tokenData.expires_in === "number"
+          ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+          : quickbooksConfig.accessTokenExpiresAt,
+      refreshTokenExpiresAt:
+        typeof (tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in) ===
+        "number"
+          ? new Date(
+              Date.now() +
+                (tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in) *
+                  1000
+            ).toISOString()
+          : quickbooksConfig.refreshTokenExpiresAt
     });
     await persistQuickBooksCredentials({
       accessToken: refreshedAccessToken,
       refreshToken: refreshedRefreshToken,
-      realmId: connection.realmId
+      realmId: connection.realmId,
+      accessTokenExpiresAt:
+        typeof tokenData.expires_in === "number"
+          ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+          : quickbooksConfig.accessTokenExpiresAt,
+      refreshTokenExpiresAt:
+        typeof (tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in) ===
+        "number"
+          ? new Date(
+              Date.now() +
+                (tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in) *
+                  1000
+            ).toISOString()
+          : quickbooksConfig.refreshTokenExpiresAt
     });
 
     error.config.headers = error.config.headers ?? {};

@@ -3,9 +3,45 @@ import { quickbooksConfig } from "../../config/quickbooks.config";
 import { HttpError } from "../../utils/http-error";
 import { logger } from "../../utils/logger";
 import {
+  hydrateQuickBooksCredentials,
   persistQuickBooksCredentials,
   setQuickBooksCredentials
 } from "./quickbooks.credentials";
+import { logQuickBooksIntuitFailure } from "./quickbooks.observability";
+
+function toExpiryIso(expiresInSeconds: unknown) {
+  if (typeof expiresInSeconds !== "number" || !Number.isFinite(expiresInSeconds)) {
+    return undefined;
+  }
+
+  return new Date(Date.now() + expiresInSeconds * 1000).toISOString();
+}
+
+async function getQuickBooksCompanyName(accessToken?: string, realmId?: string) {
+  if (!accessToken || !realmId) {
+    return undefined;
+  }
+
+  try {
+    const response = await axios.get(
+      `${quickbooksConfig.apiBaseUrl}/v3/company/${realmId}/companyinfo/${realmId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json"
+        },
+        params: {
+          minorversion: quickbooksConfig.minorVersion
+        }
+      }
+    );
+
+    return response.data?.CompanyInfo?.CompanyName as string | undefined;
+  } catch (error) {
+    logQuickBooksIntuitFailure("quickbooks.company_info.failed", error, { realmId });
+    return undefined;
+  }
+}
 
 export function getQuickBooksConnectionDiagnostics() {
   const hasClientId = Boolean(quickbooksConfig.clientId);
@@ -80,20 +116,25 @@ export async function exchangeQuickBooksCode(code: string) {
     redirect_uri: quickbooksConfig.redirectUri ?? ""
   });
 
-  const response = await axios.post(quickbooksConfig.tokenUrl, payload.toString(), {
-    headers: {
-      Authorization: `Basic ${getBasicAuthHeader()}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    }
-  });
+  try {
+    const response = await axios.post(quickbooksConfig.tokenUrl, payload.toString(), {
+      headers: {
+        Authorization: `Basic ${getBasicAuthHeader()}`,
+        "Content-Type": "application/x-www-form-urlencoded"
+      }
+    });
 
-  logger.info("quickbooks.oauth.exchange.completed", {
-    hasAccessToken: Boolean(response.data?.access_token),
-    hasRefreshToken: Boolean(response.data?.refresh_token),
-    realmIdWillBeStoredByCallback: true
-  });
+    logger.info("quickbooks.oauth.exchange.completed", {
+      hasAccessToken: Boolean(response.data?.access_token),
+      hasRefreshToken: Boolean(response.data?.refresh_token),
+      realmIdWillBeStoredByCallback: true
+    });
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    logQuickBooksIntuitFailure("quickbooks.oauth.exchange.failed", error);
+    throw error;
+  }
 }
 
 export async function refreshQuickBooksToken(refreshToken?: string) {
@@ -111,32 +152,49 @@ export async function refreshQuickBooksToken(refreshToken?: string) {
     hasRefreshToken: Boolean(finalRefreshToken)
   });
 
-  const response = await axios.post(quickbooksConfig.tokenUrl, payload.toString(), {
-    headers: {
-      Authorization: `Basic ${getBasicAuthHeader()}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    }
-  });
+  try {
+    const response = await axios.post(quickbooksConfig.tokenUrl, payload.toString(), {
+      headers: {
+        Authorization: `Basic ${getBasicAuthHeader()}`,
+        "Content-Type": "application/x-www-form-urlencoded"
+      }
+    });
 
-  logger.info("quickbooks.token.refresh.completed", {
-    hasAccessToken: Boolean(response.data?.access_token),
-    hasRefreshToken: Boolean(response.data?.refresh_token)
-  });
+    logger.info("quickbooks.token.refresh.completed", {
+      hasAccessToken: Boolean(response.data?.access_token),
+      hasRefreshToken: Boolean(response.data?.refresh_token)
+    });
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    logQuickBooksIntuitFailure("quickbooks.token.refresh.failed", error, {
+      realmId: quickbooksConfig.realmId
+    });
+    throw error;
+  }
 }
 
 export async function storeQuickBooksTokens(
   tokenData: {
     access_token?: string;
     refresh_token?: string;
+    expires_in?: number;
+    x_refresh_token_expires_in?: number;
+    refresh_token_expires_in?: number;
   },
   realmId?: string
 ) {
+  const companyName = await getQuickBooksCompanyName(tokenData.access_token, realmId);
+
   await persistQuickBooksCredentials({
     accessToken: tokenData.access_token,
     refreshToken: tokenData.refresh_token,
-    realmId
+    realmId,
+    accessTokenExpiresAt: toExpiryIso(tokenData.expires_in),
+    refreshTokenExpiresAt: toExpiryIso(
+      tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in
+    ),
+    companyName
   });
 }
 
@@ -144,6 +202,8 @@ export async function ensureQuickBooksConnection(options?: {
   accessToken?: string;
   realmId?: string;
 }) {
+  await hydrateQuickBooksCredentials();
+
   const realmId = options?.realmId ?? quickbooksConfig.realmId;
   const accessToken = options?.accessToken ?? quickbooksConfig.accessToken;
   const diagnostics = getQuickBooksConnectionDiagnostics();
@@ -195,12 +255,20 @@ export async function ensureQuickBooksConnection(options?: {
   setQuickBooksCredentials({
     accessToken: tokenData.access_token,
     refreshToken: tokenData.refresh_token ?? quickbooksConfig.refreshToken,
-    realmId
+    realmId,
+    accessTokenExpiresAt: toExpiryIso(tokenData.expires_in),
+    refreshTokenExpiresAt: toExpiryIso(
+      tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in
+    )
   });
   await persistQuickBooksCredentials({
     accessToken: tokenData.access_token,
     refreshToken: tokenData.refresh_token ?? quickbooksConfig.refreshToken,
-    realmId
+    realmId,
+    accessTokenExpiresAt: toExpiryIso(tokenData.expires_in),
+    refreshTokenExpiresAt: toExpiryIso(
+      tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in
+    )
   });
 
   logger.info("quickbooks.connection.refreshed", {
