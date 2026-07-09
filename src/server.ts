@@ -1,9 +1,7 @@
-import { createApp } from "./app";
+import app from "./app";
 import { env } from "./config/env";
 import { getQuickBooksConnectionDiagnostics } from "./services/quickbooks/quickbooks.auth.service";
 import { logger } from "./utils/logger";
-
-const app = createApp();
 
 app.listen(env.PORT, () => {
   const baseUrl = `http://localhost:${env.PORT}`;
