@@ -17,6 +17,19 @@ function toExpiryIso(expiresInSeconds: unknown) {
   return new Date(Date.now() + expiresInSeconds * 1000).toISOString();
 }
 
+function isExpired(expiresAt?: string) {
+  if (!expiresAt) {
+    return false;
+  }
+
+  const expiresAtMs = Date.parse(expiresAt);
+  if (Number.isNaN(expiresAtMs)) {
+    return false;
+  }
+
+  return expiresAtMs <= Date.now();
+}
+
 async function getQuickBooksCompanyName(accessToken?: string, realmId?: string) {
   if (!accessToken || !realmId) {
     return undefined;
@@ -208,7 +221,7 @@ export async function ensureQuickBooksConnection(options?: {
   const accessToken = options?.accessToken ?? quickbooksConfig.accessToken;
   const diagnostics = getQuickBooksConnectionDiagnostics();
 
-  if (accessToken && realmId) {
+  if (accessToken && realmId && !isExpired(quickbooksConfig.accessTokenExpiresAt)) {
     logger.info("quickbooks.connection.ready", {
       realmId,
       source: options?.accessToken || options?.realmId ? "request-options" : "stored-config"
@@ -248,11 +261,12 @@ export async function ensureQuickBooksConnection(options?: {
 
   logger.info("quickbooks.connection.refreshing_access_token", {
     realmId,
-    hasStoredRefreshToken: true
+    hasStoredRefreshToken: true,
+    reason: accessToken ? "expired" : "missing"
   });
 
   const tokenData = await refreshQuickBooksToken(quickbooksConfig.refreshToken);
-  setQuickBooksCredentials({
+  const refreshedRecord = {
     accessToken: tokenData.access_token,
     refreshToken: tokenData.refresh_token ?? quickbooksConfig.refreshToken,
     realmId,
@@ -260,16 +274,10 @@ export async function ensureQuickBooksConnection(options?: {
     refreshTokenExpiresAt: toExpiryIso(
       tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in
     )
-  });
-  await persistQuickBooksCredentials({
-    accessToken: tokenData.access_token,
-    refreshToken: tokenData.refresh_token ?? quickbooksConfig.refreshToken,
-    realmId,
-    accessTokenExpiresAt: toExpiryIso(tokenData.expires_in),
-    refreshTokenExpiresAt: toExpiryIso(
-      tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in
-    )
-  });
+  };
+
+  setQuickBooksCredentials(refreshedRecord);
+  await persistQuickBooksCredentials(refreshedRecord);
 
   logger.info("quickbooks.connection.refreshed", {
     realmId,

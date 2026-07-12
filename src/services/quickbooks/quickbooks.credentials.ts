@@ -18,7 +18,9 @@ export interface QuickBooksConnectionRecord extends QuickBooksCredentialUpdates 
   environment: typeof quickbooksConfig.environment;
 }
 
-const QUICKBOOKS_STORAGE_KEY = "quickbooks:connection";
+const QUICKBOOKS_STORAGE_KEY_PREFIX = "quickbooks";
+const QUICKBOOKS_STORAGE_SETUP_ERROR =
+  "QuickBooks persistent storage is not configured for Vercel. Configure KV_REST_API_URL and KV_REST_API_TOKEN.";
 
 let redisClient: Redis | null | undefined;
 
@@ -41,7 +43,24 @@ function getRedisClient() {
 }
 
 function getStorageKey() {
-  return `${QUICKBOOKS_STORAGE_KEY}:${quickbooksConfig.environment}`;
+  return `${QUICKBOOKS_STORAGE_KEY_PREFIX}:${quickbooksConfig.environment}:connection`;
+}
+
+function ensureVercelStorageConfigured() {
+  if (!quickbooksConfig.isVercel) {
+    return;
+  }
+
+  if (quickbooksConfig.kvRestApiUrl && quickbooksConfig.kvRestApiToken) {
+    return;
+  }
+
+  logger.error("quickbooks.storage.unconfigured", {
+    environment: quickbooksConfig.environment,
+    isVercel: true,
+    expectedEnvVars: ["KV_REST_API_URL", "KV_REST_API_TOKEN"]
+  });
+  throw new HttpError(503, QUICKBOOKS_STORAGE_SETUP_ERROR);
 }
 
 function getCurrentRecord(): QuickBooksConnectionRecord {
@@ -165,6 +184,7 @@ function mergeRecord(
 }
 
 async function readPersistentRecord() {
+  ensureVercelStorageConfigured();
   const redis = getRedisClient();
 
   if (!redis) {
@@ -176,21 +196,10 @@ async function readPersistentRecord() {
 }
 
 async function writePersistentRecord(record: QuickBooksConnectionRecord) {
+  ensureVercelStorageConfigured();
   const redis = getRedisClient();
 
   if (!redis) {
-    if (quickbooksConfig.isVercel) {
-      logger.error("quickbooks.storage.unconfigured", {
-        environment: quickbooksConfig.environment,
-        isVercel: true,
-        expectedEnvVars: ["KV_REST_API_URL", "KV_REST_API_TOKEN"]
-      });
-      throw new HttpError(
-        503,
-        "QuickBooks persistent storage is not configured for Vercel. Configure KV_REST_API_URL and KV_REST_API_TOKEN."
-      );
-    }
-
     await writeLocalEnvRecord(record);
     return;
   }

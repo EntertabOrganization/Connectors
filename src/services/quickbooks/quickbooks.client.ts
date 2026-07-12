@@ -8,6 +8,14 @@ import {
 import { persistQuickBooksCredentials, setQuickBooksCredentials } from "./quickbooks.credentials";
 import { logQuickBooksIntuitFailure } from "./quickbooks.observability";
 
+function toExpiryIso(expiresInSeconds: unknown, fallback?: string) {
+  if (typeof expiresInSeconds !== "number" || !Number.isFinite(expiresInSeconds)) {
+    return fallback;
+  }
+
+  return new Date(Date.now() + expiresInSeconds * 1000).toISOString();
+}
+
 export async function createQuickBooksClient(options?: {
   accessToken?: string;
   realmId?: string;
@@ -50,43 +58,22 @@ export async function createQuickBooksClient(options?: {
     const tokenData = await refreshQuickBooksToken(quickbooksConfig.refreshToken);
     const refreshedAccessToken = tokenData.access_token;
     const refreshedRefreshToken = tokenData.refresh_token ?? quickbooksConfig.refreshToken;
+    const refreshedRecord = {
+      accessToken: refreshedAccessToken,
+      refreshToken: refreshedRefreshToken,
+      realmId: connection.realmId,
+      accessTokenExpiresAt: toExpiryIso(
+        tokenData.expires_in,
+        quickbooksConfig.accessTokenExpiresAt
+      ),
+      refreshTokenExpiresAt: toExpiryIso(
+        tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in,
+        quickbooksConfig.refreshTokenExpiresAt
+      )
+    };
 
-    setQuickBooksCredentials({
-      accessToken: refreshedAccessToken,
-      refreshToken: refreshedRefreshToken,
-      realmId: connection.realmId,
-      accessTokenExpiresAt:
-        typeof tokenData.expires_in === "number"
-          ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
-          : quickbooksConfig.accessTokenExpiresAt,
-      refreshTokenExpiresAt:
-        typeof (tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in) ===
-        "number"
-          ? new Date(
-              Date.now() +
-                (tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in) *
-                  1000
-            ).toISOString()
-          : quickbooksConfig.refreshTokenExpiresAt
-    });
-    await persistQuickBooksCredentials({
-      accessToken: refreshedAccessToken,
-      refreshToken: refreshedRefreshToken,
-      realmId: connection.realmId,
-      accessTokenExpiresAt:
-        typeof tokenData.expires_in === "number"
-          ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
-          : quickbooksConfig.accessTokenExpiresAt,
-      refreshTokenExpiresAt:
-        typeof (tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in) ===
-        "number"
-          ? new Date(
-              Date.now() +
-                (tokenData.x_refresh_token_expires_in ?? tokenData.refresh_token_expires_in) *
-                  1000
-            ).toISOString()
-          : quickbooksConfig.refreshTokenExpiresAt
-    });
+    setQuickBooksCredentials(refreshedRecord);
+    await persistQuickBooksCredentials(refreshedRecord);
 
     error.config.headers = error.config.headers ?? {};
     error.config.headers.Authorization = `Bearer ${refreshedAccessToken}`;
