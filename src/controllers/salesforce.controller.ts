@@ -1,13 +1,25 @@
 import { Request, Response } from "express";
 import {
   createSalesforceLead,
-  getSalesforceLeadById,
-  getSalesforceLeads
+  findSalesforceLeadIdByEmailOrPhone,
+  getSalesforceLeadById
 } from "../services/salesforce/salesforce.lead.service";
 import { successResponse } from "../utils/response.util";
 
 function getRouteParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] : value ?? "";
+}
+
+function getQueryParam(value: unknown): string | undefined {
+  if (Array.isArray(value)) {
+    return getQueryParam(value[0]);
+  }
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  const stringValue = String(value).trim();
+  return stringValue.length > 0 ? stringValue : undefined;
 }
 
 async function handleCreateLead(serviceType: string, req: Request, res: Response) {
@@ -46,23 +58,11 @@ export async function createTravelLead(req: Request, res: Response) {
 }
 
 export async function listLeads(req: Request, res: Response) {
-  const result = await getSalesforceLeads({
-    page: req.query.page ? Number(req.query.page) : undefined,
-    limit: req.query.limit ? Number(req.query.limit) : undefined,
-    cursor: req.query.cursor?.toString(),
-    search: req.query.search?.toString(),
-    serviceType: req.query.serviceType?.toString(),
-    email: req.query.email?.toString(),
-    phone: req.query.phone?.toString(),
-    fromDate: req.query.fromDate?.toString(),
-    toDate: req.query.toDate?.toString()
-  });
+  const email = getQueryParam(req.query.email);
+  const phone = getQueryParam(req.query.phone);
 
-  res.json({
-    success: true,
-    pagination: result.pagination,
-    data: result.data
-  });
+  const result = await findSalesforceLeadIdByEmailOrPhone({ email, phone });
+  return res.json(successResponse(result));
 }
 
 export async function getLeadById(req: Request, res: Response) {

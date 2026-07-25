@@ -5,12 +5,22 @@ vi.mock("../services/salesforce/salesforce.auth.service", () => ({
   getSalesforceAccessToken: vi.fn()
 }));
 
+vi.mock("../services/salesforce/salesforce.lead.service", () => ({
+  createSalesforceLead: vi.fn(),
+  findSalesforceLeadIdByEmailOrPhone: vi.fn(),
+  getSalesforceLeadById: vi.fn(),
+  getSalesforceLeads: vi.fn()
+}));
+
 import { createApp } from "../app";
 import { getSalesforceAccessToken } from "../services/salesforce/salesforce.auth.service";
+import { findSalesforceLeadIdByEmailOrPhone } from "../services/salesforce/salesforce.lead.service";
+import { HttpError } from "../utils/http-error";
 
 describe("app routes", () => {
   beforeEach(() => {
     vi.mocked(getSalesforceAccessToken).mockReset();
+    vi.mocked(findSalesforceLeadIdByEmailOrPhone).mockReset();
   });
 
   it("returns health information", async () => {
@@ -123,5 +133,55 @@ describe("app routes", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
+  });
+
+  it("returns a Salesforce lead id when lookup by email or phone matches", async () => {
+    vi.mocked(findSalesforceLeadIdByEmailOrPhone).mockResolvedValue({ id: "00Q-test" });
+
+    const response = await request(createApp()).get(
+      "/api/v1/salesforce/leads?email=karim@example.com&phone=%2B201001234567"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      success: true,
+      data: {
+        id: "00Q-test"
+      }
+    });
+    expect(findSalesforceLeadIdByEmailOrPhone).toHaveBeenCalledWith({
+      email: "karim@example.com",
+      phone: "+201001234567"
+    });
+  });
+
+  it("returns 404 when lookup by email or phone has no Salesforce match", async () => {
+    vi.mocked(findSalesforceLeadIdByEmailOrPhone).mockRejectedValue(
+      new HttpError(404, "Salesforce lead not found")
+    );
+
+    const response = await request(createApp()).get(
+      "/api/v1/salesforce/leads?email=missing@example.com"
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.body.success).toBe(false);
+    expect(response.body.error.message).toBe("Salesforce lead not found");
+  });
+
+  it("returns 400 when lead lookup omits email and phone", async () => {
+    vi.mocked(findSalesforceLeadIdByEmailOrPhone).mockRejectedValue(
+      new HttpError(400, "Email or phone is required")
+    );
+
+    const response = await request(createApp()).get("/api/v1/salesforce/leads");
+
+    expect(response.status).toBe(400);
+    expect(response.body.success).toBe(false);
+    expect(response.body.error.message).toBe("Email or phone is required");
+    expect(findSalesforceLeadIdByEmailOrPhone).toHaveBeenCalledWith({
+      email: undefined,
+      phone: undefined
+    });
   });
 });

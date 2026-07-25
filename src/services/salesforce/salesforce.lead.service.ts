@@ -173,6 +173,25 @@ export function buildLeadWhereClause(query: LeadListQuery): string {
   return conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
 }
 
+export function buildLeadLookupWhereClause(query: Pick<LeadListQuery, "email" | "phone">): string {
+  const conditions: string[] = [];
+
+  if (query.email) {
+    conditions.push(`Email = '${escapeSoqlValue(query.email)}'`);
+  }
+  if (query.phone) {
+    conditions.push(`Phone = '${escapeSoqlValue(query.phone)}'`);
+  }
+
+  if (conditions.length === 0) {
+    throw new HttpError(400, "Email or phone is required");
+  }
+
+  return `WHERE ${
+    conditions.length === 1 ? conditions[0] : `(${conditions.join(" OR ")})`
+  }`;
+}
+
 export async function createSalesforceLead(serviceType: string, payload: Record<string, unknown>) {
   try {
     const client = await createSalesforceClient();
@@ -226,6 +245,29 @@ export async function getSalesforceLeads(query: LeadListQuery) {
     },
     data
   };
+}
+
+export async function findSalesforceLeadIdByEmailOrPhone(
+  query: Pick<LeadListQuery, "email" | "phone">
+) {
+  const client = await createSalesforceClient();
+  const whereClause = buildLeadLookupWhereClause(query);
+  const soql = [
+    "SELECT Id",
+    " FROM Lead ",
+    whereClause,
+    " ORDER BY CreatedDate DESC",
+    " LIMIT 1"
+  ].join("");
+
+  const response = await client.get("/query", { params: { q: soql } });
+  const [record] = response.data.records ?? [];
+
+  if (!record?.Id) {
+    throw new HttpError(404, "Salesforce lead not found");
+  }
+
+  return { id: String(record.Id) };
 }
 
 export async function getSalesforceLeadById(id: string) {

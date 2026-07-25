@@ -291,55 +291,28 @@ export const swaggerDocument = {
     "/salesforce/leads": {
       get: {
         tags: ["Sales Force"],
-        summary: "List Salesforce leads",
+        summary: "Find Salesforce lead by email or phone",
         parameters: [
-          {
-            name: "page",
-            in: "query",
-            schema: { type: "integer", example: 1 }
-          },
-          {
-            name: "limit",
-            in: "query",
-            schema: { type: "integer", example: 20 }
-          },
-          {
-            name: "cursor",
-            in: "query",
-            schema: { type: "string", example: "next-page-token" }
-          },
-          {
-            name: "search",
-            in: "query",
-            schema: { type: "string", example: "Ahmed" }
-          },
-          {
-            name: "serviceType",
-            in: "query",
-            schema: { type: "string", example: "travel" }
-          },
           {
             name: "email",
             in: "query",
+            description:
+              "Lead email address. Provide email, phone, or both to return the matching lead id.",
             schema: { type: "string", example: "laila.mostafa@example.com" }
           },
           {
             name: "phone",
             in: "query",
+            description:
+              "Lead phone number. If email is also provided, either value can match.",
             schema: { type: "string", example: "+201022233344" }
-          },
-          {
-            name: "fromDate",
-            in: "query",
-            schema: { type: "string", example: "2026-07-01" }
-          },
-          {
-            name: "toDate",
-            in: "query",
-            schema: { type: "string", example: "2026-07-31" }
           }
         ],
-        responses: { "200": { description: "Lead list" } }
+        responses: {
+          "200": { description: "{ success: true, data: { id } }" },
+          "400": { description: "Email or phone is required" },
+          "404": { description: "Salesforce lead not found" }
+        }
       }
     },
     "/salesforce/leads/{id}": {

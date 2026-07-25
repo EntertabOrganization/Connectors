@@ -524,43 +524,31 @@ Content-Type: application/json
 }
 ```
 
-### List Salesforce Leads
+### Find Salesforce Lead by Email or Phone
 
 ```http
-GET /api/v1/salesforce/leads?page=1&limit=20&search=Ahmed&serviceType=travel
+GET /api/v1/salesforce/leads?email=test@example.com&phone=+201000000000
 ```
+
+Provide `email`, `phone`, or both. If both are provided, either value can match.
+The endpoint returns the matching Salesforce lead ID, HTTP `400` when neither
+value is provided, and HTTP `404` when no lead matches.
 
 Supported query parameters:
 
 | Parameter | Description |
 | --- | --- |
-| `page` | Page number for offset pagination. |
-| `limit` | Page size. |
-| `cursor` | Cursor based on `CreatedDate`; when provided, offset is not used. |
-| `search` | Matches name, email, or phone. |
-| `serviceType` | Filters `Service_Type__c`. |
-| `email` | Filters exact email. |
-| `phone` | Filters exact phone. |
-| `fromDate` | Filters `CreatedDate >= fromDate`. |
-| `toDate` | Filters `CreatedDate <= toDate`. |
+| `email` | Lead email address. |
+| `phone` | Lead phone number. |
 
-Response data is normalized to:
+Response:
 
 ```json
 {
-  "id": "00Q8c00001ABCDeEAH",
-  "name": "Laila Mostafa",
-  "firstName": "Laila",
-  "lastName": "Mostafa",
-  "email": "laila.mostafa@example.com",
-  "phone": "+201022233344",
-  "company": "Individual",
-  "status": "New",
-  "serviceType": "travel",
-  "leadSource": "Website - Travel Service",
-  "createdDate": "2026-07-18T14:00:00.000+0000",
-  "description": "Travel service request from website",
-  "formData": {}
+  "success": true,
+  "data": {
+    "id": "00Q8c00001ABCDeEAH"
+  }
 }
 ```
 

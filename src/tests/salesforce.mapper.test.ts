@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  buildLeadLookupWhereClause,
   buildLeadWhereClause,
   createSalesforceLead,
+  findSalesforceLeadIdByEmailOrPhone,
   getSalesforceLeads,
   resetSalesforceLeadSchemaCache
 } from "../services/salesforce/salesforce.lead.service";
@@ -56,6 +58,36 @@ describe("salesforce mapping", () => {
     expect(clause).toContain("Name LIKE '%karim%'");
   });
 
+  it("builds lead lookup filters for email only", () => {
+    const clause = buildLeadLookupWhereClause({ email: "karim@example.com" });
+
+    expect(clause).toBe("WHERE Email = 'karim@example.com'");
+  });
+
+  it("builds lead lookup filters for phone only", () => {
+    const clause = buildLeadLookupWhereClause({ phone: "+201001234567" });
+
+    expect(clause).toBe("WHERE Phone = '+201001234567'");
+  });
+
+  it("builds lead lookup filters for email or phone", () => {
+    const clause = buildLeadLookupWhereClause({
+      email: "karim@example.com",
+      phone: "+201001234567"
+    });
+
+    expect(clause).toBe("WHERE (Email = 'karim@example.com' OR Phone = '+201001234567')");
+  });
+
+  it("escapes lead lookup filter values", () => {
+    const clause = buildLeadLookupWhereClause({
+      email: "o'hara@example.com",
+      phone: "+201001234567"
+    });
+
+    expect(clause).toContain("Email = 'o\\'hara@example.com'");
+  });
+
   it("returns page based pagination and cursor metadata", async () => {
     const createClientSpy = vi
       .spyOn(salesforceClient, "createSalesforceClient")
@@ -75,6 +107,49 @@ describe("salesforce mapping", () => {
     expect(result.pagination.hasNextPage).toBe(true);
     expect(result.pagination.nextCursor).toBe("2026-07-02T10:00:00.000Z");
     expect(result.data).toHaveLength(1);
+
+    createClientSpy.mockRestore();
+  });
+
+  it("returns matching lead id by email or phone", async () => {
+    const get = vi.fn().mockResolvedValue({
+      data: {
+        records: [{ Id: "00Q-test" }]
+      }
+    });
+    const createClientSpy = vi
+      .spyOn(salesforceClient, "createSalesforceClient")
+      .mockResolvedValue({ get } as any);
+
+    const result = await findSalesforceLeadIdByEmailOrPhone({
+      email: "karim@example.com",
+      phone: "+201001234567"
+    });
+
+    expect(result).toEqual({ id: "00Q-test" });
+    expect(get).toHaveBeenCalledWith("/query", {
+      params: {
+        q:
+          "SELECT Id FROM Lead WHERE (Email = 'karim@example.com' OR Phone = '+201001234567') ORDER BY CreatedDate DESC LIMIT 1"
+      }
+    });
+
+    createClientSpy.mockRestore();
+  });
+
+  it("throws not found when lead lookup has no matches", async () => {
+    const createClientSpy = vi
+      .spyOn(salesforceClient, "createSalesforceClient")
+      .mockResolvedValue({
+        get: vi.fn().mockResolvedValue({ data: { records: [] } })
+      } as any);
+
+    await expect(
+      findSalesforceLeadIdByEmailOrPhone({ email: "missing@example.com" })
+    ).rejects.toMatchObject({
+      statusCode: 404,
+      message: "Salesforce lead not found"
+    } satisfies Partial<HttpError>);
 
     createClientSpy.mockRestore();
   });
