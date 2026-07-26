@@ -830,6 +830,7 @@ Supported Product/Service names:
 | Vehicle Sourcing & Exporting | 108 |
 
 If no existing QuickBooks customer matches `billingEmail`, the endpoint returns HTTP `404`; it does not create a customer automatically.
+Before creating the invoice, the service checks that the mapped QuickBooks Item is active and not a category. If the mapped ID points to a category, it tries to find an active non-category QuickBooks Item with the same Product/Service name. If none exists, the endpoint returns HTTP `400` and the QuickBooks Product/Service mapping must be updated to a sellable item.
 
 Response data:
 

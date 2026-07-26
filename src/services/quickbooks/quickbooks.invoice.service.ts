@@ -44,6 +44,50 @@ export async function findQuickBooksCustomerByEmail(
   }
 }
 
+function isUsableInvoiceItem(item: Record<string, any> | undefined) {
+  return Boolean(item?.Id && item.Active !== false && item.Type !== "Category");
+}
+
+async function findUsableQuickBooksItemByName(
+  productServiceName: QuickBooksProductServiceName,
+  client: AxiosInstance
+) {
+  const query = `SELECT * FROM Item WHERE Name = '${escapeQuickBooksQueryValue(
+    productServiceName
+  )}' STARTPOSITION 1 MAXRESULTS 100`;
+  const response = await client.get("/query", {
+    params: { query }
+  });
+  const items = response.data.QueryResponse?.Item ?? [];
+
+  return items.find((item: Record<string, any>) => isUsableInvoiceItem(item));
+}
+
+async function resolveQuickBooksInvoiceItemId(
+  productServiceName: QuickBooksProductServiceName,
+  client: AxiosInstance
+) {
+  const mappedItemId = getQuickBooksItemIdForProductService(productServiceName);
+  const mappedItemResponse = await client.get(`/item/${mappedItemId}`);
+  const mappedItem = mappedItemResponse.data.Item;
+
+  if (isUsableInvoiceItem(mappedItem)) {
+    return String(mappedItem.Id);
+  }
+
+  const itemByName = await findUsableQuickBooksItemByName(productServiceName, client);
+
+  if (itemByName?.Id) {
+    return String(itemByName.Id);
+  }
+
+  const mappedType = mappedItem?.Type ? ` The mapped item type is ${mappedItem.Type}.` : "";
+  throw new HttpError(
+    400,
+    `QuickBooks Product/Service "${productServiceName}" is not a sellable invoice item.${mappedType} Update the Product/Service mapping to an active non-category QuickBooks item.`
+  );
+}
+
 export async function createQuickBooksInvoice(payload: {
   billingEmail: string;
   lineItems: Array<{
@@ -58,16 +102,22 @@ export async function createQuickBooksInvoice(payload: {
   try {
     const client = await createQuickBooksClient();
     const customer = await findQuickBooksCustomerByEmail(payload.billingEmail, client);
+    const resolvedLineItems = await Promise.all(
+      payload.lineItems.map(async (item) => ({
+        ...item,
+        itemId: await resolveQuickBooksInvoiceItemId(item.productServiceName, client)
+      }))
+    );
     const response = await client.post("/invoice", {
       CustomerRef: { value: customer.id },
       DueDate: payload.dueDate,
       PrivateNote: payload.privateNote,
-      Line: payload.lineItems.map((item) => ({
+      Line: resolvedLineItems.map((item) => ({
         DetailType: "SalesItemLineDetail",
         Amount: item.quantity * item.unitPrice,
         Description: item.description,
         SalesItemLineDetail: {
-          ItemRef: { value: getQuickBooksItemIdForProductService(item.productServiceName) },
+          ItemRef: { value: item.itemId },
           Qty: item.quantity,
           UnitPrice: item.unitPrice
         }

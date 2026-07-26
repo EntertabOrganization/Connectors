@@ -156,6 +156,16 @@ describe("quickbooks invoice creation", () => {
         }
       }
     });
+    quickBooksClient.get.mockResolvedValueOnce({
+      data: {
+        Item: {
+          Id: "5",
+          Name: "Travel",
+          Active: true,
+          Type: "Service"
+        }
+      }
+    });
     quickBooksClient.post.mockResolvedValueOnce({
       data: {
         Invoice: {
@@ -198,5 +208,117 @@ describe("quickbooks invoice creation", () => {
       ]
     });
     expect(result.customerId).toBe("58");
+  });
+
+  it("falls back to a live non-category item by name when mapped item is a category", async () => {
+    quickBooksClient.get
+      .mockResolvedValueOnce({
+        data: {
+          QueryResponse: {
+            Customer: [
+              {
+                Id: "58",
+                Active: true,
+                PrimaryEmailAddr: { Address: "billing@example.com" }
+              }
+            ]
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          Item: {
+            Id: "5",
+            Name: "Travel",
+            Active: true,
+            Type: "Category"
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          QueryResponse: {
+            Item: [
+              {
+                Id: "105",
+                Name: "Travel",
+                Active: true,
+                Type: "Service"
+              }
+            ]
+          }
+        }
+      });
+    quickBooksClient.post.mockResolvedValueOnce({
+      data: {
+        Invoice: {
+          Id: "145",
+          CustomerRef: { value: "58" },
+          TotalAmt: 3000
+        }
+      }
+    });
+
+    await createQuickBooksInvoice({
+      billingEmail: "billing@example.com",
+      lineItems: [
+        {
+          productServiceName: "Travel",
+          quantity: 2,
+          unitPrice: 1500
+        }
+      ]
+    });
+
+    expect(quickBooksClient.post.mock.calls[0][1].Line[0].SalesItemLineDetail.ItemRef).toEqual({
+      value: "105"
+    });
+  });
+
+  it("fails clearly when the selected product service only maps to a category", async () => {
+    quickBooksClient.get
+      .mockResolvedValueOnce({
+        data: {
+          QueryResponse: {
+            Customer: [
+              {
+                Id: "58",
+                Active: true,
+                PrimaryEmailAddr: { Address: "billing@example.com" }
+              }
+            ]
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          Item: {
+            Id: "5",
+            Name: "Travel",
+            Active: true,
+            Type: "Category"
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: { QueryResponse: { Item: [] } }
+      });
+
+    await expect(
+      createQuickBooksInvoice({
+        billingEmail: "billing@example.com",
+        lineItems: [
+          {
+            productServiceName: "Travel",
+            quantity: 2,
+            unitPrice: 1500
+          }
+        ]
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message:
+        'QuickBooks Product/Service "Travel" is not a sellable invoice item. The mapped item type is Category. Update the Product/Service mapping to an active non-category QuickBooks item.'
+    } satisfies Partial<HttpError>);
   });
 });
