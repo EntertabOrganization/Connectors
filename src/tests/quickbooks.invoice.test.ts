@@ -101,7 +101,8 @@ describe("quickbooks invoice creation", () => {
     });
     expect(quickBooksClient.get).toHaveBeenCalledWith("/query", {
       params: {
-        query: "SELECT * FROM Customer WHERE PrimaryEmailAddr = 'billing@example.com' MAXRESULTS 10"
+        query:
+          "SELECT * FROM Customer WHERE PrimaryEmailAddr = 'billing@example.com' STARTPOSITION 1 MAXRESULTS 10"
       }
     });
   });
@@ -113,6 +114,31 @@ describe("quickbooks invoice creation", () => {
 
     await expect(findQuickBooksCustomerByEmail("missing@example.com")).rejects.toMatchObject({
       statusCode: 404
+    } satisfies Partial<HttpError>);
+  });
+
+  it("preserves QuickBooks 400 errors instead of returning a generic 500", async () => {
+    quickBooksClient.get.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: "Request failed with status code 400",
+      response: {
+        status: 400,
+        data: {
+          Fault: {
+            Error: [
+              {
+                Message: "Invalid query",
+                Detail: "QueryValidationError: unexpected token"
+              }
+            ]
+          }
+        }
+      }
+    });
+
+    await expect(findQuickBooksCustomerByEmail("billing@example.com")).rejects.toMatchObject({
+      statusCode: 400,
+      message: "QuickBooks request failed: QueryValidationError: unexpected token"
     } satisfies Partial<HttpError>);
   });
 
