@@ -743,6 +743,8 @@ Response data:
 }
 ```
 
+If `primaryEmailAddr` already belongs to an active QuickBooks customer, the endpoint returns that existing customer instead of creating a duplicate. If QuickBooks rejects the payload, the API returns the QuickBooks error details with the original QuickBooks status code.
+
 ### List QuickBooks Customers
 
 ```http

@@ -87,7 +87,13 @@ export const swaggerDocument = {
             }
           }
         },
-        responses: { "201": { description: "Created" } }
+        responses: {
+          "201": {
+            description:
+              "Created, or returned the existing active customer when primaryEmailAddr already matched."
+          },
+          "400": { description: "Validation failed or QuickBooks rejected the customer payload." }
+        }
       }
     },
     "/salesforce/leads/medical": {
@@ -431,7 +437,11 @@ export const swaggerDocument = {
             }
           }
         },
-        responses: { "201": { description: "Created" } }
+        responses: {
+          "201": { description: "Created" },
+          "400": { description: "Validation failed or QuickBooks rejected the invoice payload." },
+          "404": { description: "No QuickBooks customer matched billingEmail." }
+        }
       },
       get: {
         tags: ["Quick Box"],
