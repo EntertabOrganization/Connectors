@@ -770,12 +770,12 @@ Content-Type: application/json
 
 ```json
 {
-  "customerId": "58",
+  "billingEmail": "billing@example.com",
   "dueDate": "2026-07-30",
   "privateNote": "Net 15 invoice",
   "lineItems": [
     {
-      "itemId": "12",
+      "productServiceName": "Travel",
       "description": "Travel coordination service",
       "quantity": 2,
       "unitPrice": 1500
@@ -784,11 +784,50 @@ Content-Type: application/json
 }
 ```
 
-The service maps each line item to a QuickBooks `SalesItemLineDetail`. `Amount` is calculated as:
+The service looks up an existing QuickBooks customer by `billingEmail`, uses that customer's QuickBooks ID internally as `CustomerRef.value`, and maps each `productServiceName` to the configured QuickBooks Item ID before creating the invoice. `Amount` is calculated as:
 
 ```text
 quantity * unitPrice
 ```
+
+Supported Product/Service names:
+
+| Product/Service Name | QuickBooks Item ID |
+| --- | --- |
+| Accommodation | 11 |
+| Airline Ticket | 114 |
+| Car Rental | 51 |
+| Car Sales | 65 |
+| Car Search | 88 |
+| Catering Services | 99 |
+| Charge | 55 |
+| Container Insurance | 92 |
+| Delivery/Moving Service | 16 |
+| Design & Creative Services | 95 |
+| Dispatch | 86 |
+| Education | 26 |
+| Extra Hours | 90 |
+| Food and Beverage | 97 |
+| Holding Items | 59 |
+| Labor | 61 |
+| Labor/ per hour | 62 |
+| Meals and Entertainment | 106 |
+| Moving Service | 84 |
+| Photographic Services | 104 |
+| Product Purchasing | 14 |
+| Professional Language Solutions | 1010000071 |
+| Rental Car | 67 |
+| Sales Tax | 1010000001 |
+| Shipping | 3 |
+| Shipping and Delivery Services | 1010000231 |
+| Shipping:Customs Paid Price | 1010000041 |
+| Storage | 57 |
+| Support Services | 1010000211 |
+| Transportation | 45 |
+| Travel | 5 |
+| Vehicle Sourcing & Exporting | 108 |
+
+If no existing QuickBooks customer matches `billingEmail`, the endpoint returns HTTP `404`; it does not create a customer automatically.
 
 Response data:
 
@@ -872,12 +911,12 @@ Create a QuickBooks invoice:
 curl -X POST http://localhost:3000/api/v1/quickbooks/invoices \
   -H "Content-Type: application/json" \
   -d '{
-    "customerId": "58",
+    "billingEmail": "billing@example.com",
     "dueDate": "2026-07-30",
     "privateNote": "Net 15 invoice",
     "lineItems": [
       {
-        "itemId": "12",
+        "productServiceName": "Travel",
         "description": "Travel coordination service",
         "quantity": 2,
         "unitPrice": 1500
@@ -900,9 +939,10 @@ QuickBooks customer creation requires:
 
 QuickBooks invoice creation requires:
 
-- `customerId`: non-empty string
+- `billingEmail`: valid email address for an existing QuickBooks customer
 - `lineItems`: at least one item
-- each line item requires `itemId`, positive `quantity`, and non-negative `unitPrice`
+- each line item requires `productServiceName`, positive `quantity`, and non-negative `unitPrice`
+- `productServiceName` must be one of the supported QuickBooks Product/Service names documented in the invoice section
 
 When validation fails, the request is rejected before it reaches the controller.
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { quickBooksProductServiceNames } from "../services/quickbooks/quickbooks.product-service-map";
 
 export const refreshQuickBooksTokenSchema = z.object({
   refreshToken: z.string().min(1).optional()
@@ -14,20 +15,22 @@ export const quickBooksCustomerSchema = z.object({
 });
 
 export const quickBooksInvoiceSchema = z.object({
-  customerId: z.string().min(1),
+  billingEmail: z.email(),
   lineItems: z
     .array(
-      z.object({
-        itemId: z.string().min(1),
-        description: z.string().optional(),
-        quantity: z.number().positive(),
-        unitPrice: z.number().nonnegative()
-      })
+      z
+        .object({
+          productServiceName: z.enum(quickBooksProductServiceNames),
+          description: z.string().optional(),
+          quantity: z.number().positive(),
+          unitPrice: z.number().nonnegative()
+        })
+        .strict()
     )
     .min(1),
   dueDate: z.string().optional(),
   privateNote: z.string().optional()
-});
+}).strict();
 
 export const quickBooksItemSchema = z.object({
   name: z.string().min(1),

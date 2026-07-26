@@ -15,6 +15,7 @@ vi.mock("../services/salesforce/salesforce.lead.service", () => ({
 import { createApp } from "../app";
 import { getSalesforceAccessToken } from "../services/salesforce/salesforce.auth.service";
 import { findSalesforceLeadIdByEmailOrPhone } from "../services/salesforce/salesforce.lead.service";
+import { quickBooksProductServiceNames } from "../services/quickbooks/quickbooks.product-service-map";
 import { HttpError } from "../utils/http-error";
 
 describe("app routes", () => {
@@ -110,6 +111,18 @@ describe("app routes", () => {
       docs: true,
       openapiJson: "/api/v1/docs.json"
     });
+  });
+
+  it("documents QuickBooks invoice product service names as a Swagger enum", async () => {
+    const response = await request(createApp()).get("/api/v1/docs.json");
+    const schema =
+      response.body.paths["/quickbooks/invoices"].post.requestBody.content["application/json"]
+        .schema;
+    const enumValues = schema.properties.lineItems.items.properties.productServiceName.enum;
+
+    expect(response.status).toBe(200);
+    expect(enumValues).toEqual(quickBooksProductServiceNames);
+    expect(schema.properties.billingEmail.format).toBe("email");
   });
 
   it("exposes the QuickBooks auth callback route on /api/v1/quickbooks/auth/callback", async () => {

@@ -1,3 +1,5 @@
+import { quickBooksProductServiceNames } from "../services/quickbooks/quickbooks.product-service-map";
+
 export const swaggerDocument = {
   openapi: "3.0.0",
   info: {
@@ -477,13 +479,59 @@ export const swaggerDocument = {
           required: true,
           content: {
             "application/json": {
+              schema: {
+                type: "object",
+                required: ["billingEmail", "lineItems"],
+                properties: {
+                  billingEmail: {
+                    type: "string",
+                    format: "email",
+                    example: "billing@example.com"
+                  },
+                  dueDate: {
+                    type: "string",
+                    example: "2026-07-30"
+                  },
+                  privateNote: {
+                    type: "string",
+                    example: "Net 15 invoice"
+                  },
+                  lineItems: {
+                    type: "array",
+                    minItems: 1,
+                    items: {
+                      type: "object",
+                      required: ["productServiceName", "quantity", "unitPrice"],
+                      properties: {
+                        productServiceName: {
+                          type: "string",
+                          enum: quickBooksProductServiceNames,
+                          example: "Travel"
+                        },
+                        description: {
+                          type: "string",
+                          example: "Travel coordination service"
+                        },
+                        quantity: {
+                          type: "number",
+                          example: 2
+                        },
+                        unitPrice: {
+                          type: "number",
+                          example: 1500
+                        }
+                      }
+                    }
+                  }
+                }
+              },
               example: {
-                customerId: "58",
+                billingEmail: "billing@example.com",
                 dueDate: "2026-07-30",
                 privateNote: "Net 15 invoice",
                 lineItems: [
                   {
-                    itemId: "12",
+                    productServiceName: "Travel",
                     description: "Travel coordination service",
                     quantity: 2,
                     unitPrice: 1500

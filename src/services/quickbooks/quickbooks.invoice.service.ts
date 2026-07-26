@@ -1,10 +1,52 @@
+import { AxiosInstance } from "axios";
 import { createQuickBooksClient } from "./quickbooks.client";
 import { normalizeQuickBooksInvoice } from "./quickbooks.mapper";
+import {
+  getQuickBooksItemIdForProductService,
+  QuickBooksProductServiceName
+} from "./quickbooks.product-service-map";
+import { HttpError } from "../../utils/http-error";
+
+function escapeQuickBooksQueryValue(value: string) {
+  return value.replace(/'/g, "\\'");
+}
+
+export async function findQuickBooksCustomerByEmail(
+  billingEmail: string,
+  existingClient?: AxiosInstance
+) {
+  const client = existingClient ?? (await createQuickBooksClient());
+  const query = `SELECT * FROM Customer WHERE PrimaryEmailAddr = '${escapeQuickBooksQueryValue(
+    billingEmail
+  )}' MAXRESULTS 10`;
+  const response = await client.get("/query", {
+    params: { query }
+  });
+  const customers = response.data.QueryResponse?.Customer ?? [];
+  const normalizedEmail = billingEmail.toLowerCase();
+  const customer = customers.find((candidate: Record<string, any>) => {
+    const email = candidate.PrimaryEmailAddr?.Address;
+    return (
+      candidate.Active !== false &&
+      typeof email === "string" &&
+      email.toLowerCase() === normalizedEmail
+    );
+  });
+
+  if (!customer?.Id) {
+    throw new HttpError(404, `QuickBooks customer not found for billing email ${billingEmail}`);
+  }
+
+  return {
+    id: String(customer.Id),
+    billingEmail: customer.PrimaryEmailAddr?.Address ?? billingEmail
+  };
+}
 
 export async function createQuickBooksInvoice(payload: {
-  customerId: string;
+  billingEmail: string;
   lineItems: Array<{
-    itemId: string;
+    productServiceName: QuickBooksProductServiceName;
     description?: string;
     quantity: number;
     unitPrice: number;
@@ -13,8 +55,9 @@ export async function createQuickBooksInvoice(payload: {
   privateNote?: string;
 }) {
   const client = await createQuickBooksClient();
+  const customer = await findQuickBooksCustomerByEmail(payload.billingEmail, client);
   const response = await client.post("/invoice", {
-    CustomerRef: { value: payload.customerId },
+    CustomerRef: { value: customer.id },
     DueDate: payload.dueDate,
     PrivateNote: payload.privateNote,
     Line: payload.lineItems.map((item) => ({
@@ -22,7 +65,7 @@ export async function createQuickBooksInvoice(payload: {
       Amount: item.quantity * item.unitPrice,
       Description: item.description,
       SalesItemLineDetail: {
-        ItemRef: { value: item.itemId },
+        ItemRef: { value: getQuickBooksItemIdForProductService(item.productServiceName) },
         Qty: item.quantity,
         UnitPrice: item.unitPrice
       }
