@@ -19,6 +19,7 @@ import {
   getQuickBooksInvoiceById,
   listQuickBooksInvoices
 } from "../services/quickbooks/quickbooks.invoice.service";
+import { listQuickBooksItems } from "../services/quickbooks/quickbooks.item.service";
 import { logger } from "../utils/logger";
 import { successResponse } from "../utils/response.util";
 
@@ -170,4 +171,9 @@ export async function listInvoices(req: Request, res: Response) {
 export async function getInvoiceById(req: Request, res: Response) {
   const invoice = await getQuickBooksInvoiceById(getRouteParam(req.params.id));
   res.json(successResponse(invoice));
+}
+
+export async function listItems(_req: Request, res: Response) {
+  const items = await listQuickBooksItems();
+  res.json(successResponse(items));
 }

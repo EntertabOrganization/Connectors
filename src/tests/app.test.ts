@@ -125,6 +125,17 @@ describe("app routes", () => {
     expect(schema.properties.billingEmail.format).toBe("email");
   });
 
+  it("documents the QuickBooks items list endpoint", async () => {
+    const response = await request(createApp()).get("/api/v1/docs.json");
+
+    expect(response.status).toBe(200);
+    expect(response.body.paths["/quickbooks/items"].get).toMatchObject({
+      tags: ["Quick Box"],
+      summary: "List QuickBooks items",
+      responses: { "200": { description: "Item list" } }
+    });
+  });
+
   it("exposes the QuickBooks auth callback route on /api/v1/quickbooks/auth/callback", async () => {
     const response = await request(createApp()).get("/api/v1/quickbooks/auth/callback");
 

@@ -590,6 +590,13 @@ export const swaggerDocument = {
         ],
         responses: { "200": { description: "Invoice detail" } }
       }
+    },
+    "/quickbooks/items": {
+      get: {
+        tags: ["Quick Box"],
+        summary: "List QuickBooks items",
+        responses: { "200": { description: "Item list" } }
+      }
     }
   }
 };

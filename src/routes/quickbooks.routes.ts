@@ -11,6 +11,7 @@ import {
   handleCallback,
   listCustomers,
   listInvoices,
+  listItems,
   refreshToken
 } from "../controllers/quickbooks.controller";
 import { validateRequest } from "../middlewares/validate.middleware";
@@ -35,5 +36,6 @@ router.get("/customers/:id", getCustomerById);
 router.post("/invoices", validateRequest(quickBooksInvoiceSchema), createInvoice);
 router.get("/invoices", listInvoices);
 router.get("/invoices/:id", getInvoiceById);
+router.get("/items", listItems);
 
 export default router;

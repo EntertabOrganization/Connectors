@@ -1,4 +1,5 @@
 import { createQuickBooksClient } from "./quickbooks.client";
+import { toQuickBooksHttpError } from "./quickbooks.error";
 import { normalizeQuickBooksItem } from "./quickbooks.mapper";
 
 export async function createQuickBooksItem(payload: {
@@ -22,21 +23,19 @@ export async function createQuickBooksItem(payload: {
   return normalizeQuickBooksItem(response.data.Item);
 }
 
-export async function listQuickBooksItems(params: {
-  page?: number;
-  limit?: number;
-}) {
-  const client = await createQuickBooksClient();
-  const page = Math.max(params.page ?? 1, 1);
-  const limit = Math.min(Math.max(params.limit ?? 20, 1), 100);
-  const startPosition = (page - 1) * limit + 1;
-  const query = `SELECT * FROM Item STARTPOSITION ${startPosition} MAXRESULTS ${limit}`;
-  const response = await client.get("/query", {
-    params: { query }
-  });
+export async function listQuickBooksItems() {
+  try {
+    const client = await createQuickBooksClient();
+    const query = "SELECT * FROM Item STARTPOSITION 1 MAXRESULTS 1000";
+    const response = await client.get("/query", {
+      params: { query }
+    });
 
-  const items = response.data.QueryResponse?.Item ?? [];
-  return items.map(normalizeQuickBooksItem);
+    const items = response.data.QueryResponse?.Item ?? [];
+    return items.map(normalizeQuickBooksItem);
+  } catch (error) {
+    throw toQuickBooksHttpError(error);
+  }
 }
 
 export async function getQuickBooksItemById(id: string) {

@@ -864,6 +864,18 @@ SELECT * FROM Invoice WHERE CustomerRef = '58' STARTPOSITION 1 MAXRESULTS 20
 GET /api/v1/quickbooks/invoices/145
 ```
 
+### List QuickBooks Items
+
+```http
+GET /api/v1/quickbooks/items
+```
+
+Internally runs this QuickBooks query:
+
+```sql
+SELECT * FROM Item STARTPOSITION 1 MAXRESULTS 1000
+```
+
 ## cURL Examples
 
 Health:
