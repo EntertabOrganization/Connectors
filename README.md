@@ -796,40 +796,40 @@ Supported Product/Service names:
 
 | Product/Service Name | QuickBooks Item ID |
 | --- | --- |
-| Accommodation | 11 |
-| Airline Ticket | 114 |
-| Car Rental | 51 |
-| Car Sales | 65 |
-| Car Search | 88 |
-| Catering Services | 99 |
-| Charge | 55 |
-| Container Insurance | 92 |
-| Delivery/Moving Service | 16 |
-| Design & Creative Services | 95 |
-| Dispatch | 86 |
-| Education | 26 |
-| Extra Hours | 90 |
-| Food and Beverage | 97 |
-| Holding Items | 59 |
-| Labor | 61 |
-| Labor/ per hour | 62 |
-| Meals and Entertainment | 106 |
-| Moving Service | 84 |
-| Photographic Services | 104 |
-| Product Purchasing | 14 |
-| Professional Language Solutions | 1010000071 |
-| Rental Car | 67 |
-| Sales Tax | 1010000001 |
-| Shipping | 3 |
-| Shipping and Delivery Services | 1010000231 |
-| Shipping:Customs Paid Price | 1010000041 |
-| Storage | 57 |
-| Support Services | 1010000211 |
-| Transportation | 45 |
-| Travel | 5 |
-| Vehicle Sourcing & Exporting | 108 |
+| Accommodation | 18 |
+| Airline Ticket | 115 |
+| Car Rental | 68 |
+| Car Sales | 66 |
+| Car Search | 66 |
+| Catering Services | 100 |
+| Charge | 56 |
+| Container Insurance | 93 |
+| Delivery/Moving Service | 19 |
+| Design & Creative Services | 101 |
+| Dispatch | 87 |
+| Education | 27 |
+| Extra Hours | 94 |
+| Food and Beverage | 98 |
+| Holding Items | 60 |
+| Labor | 63 |
+| Labor/ per hour | 63 |
+| Meals and Entertainment | 107 |
+| Moving Service | 85 |
+| Photographic Services | 105 |
+| Product Purchasing | 15 |
+| Professional Language Solutions | 1010000081 |
+| Rental Car | 68 |
+| Sales Tax | 1010000011 |
+| Shipping | 1010000021 |
+| Shipping and Delivery Services | 1010000241 |
+| Shipping:Customs Paid Price | 1010000051 |
+| Storage | 58 |
+| Support Services | 1010000221 |
+| Transportation | 1010000031 |
+| Travel | 28 |
+| Vehicle Sourcing & Exporting | 66 |
 
-If no existing QuickBooks customer matches `billingEmail`, the endpoint returns HTTP `404`; it does not create a customer automatically.
+These IDs point to active sellable QuickBooks items, not category rows. If no existing QuickBooks customer matches `billingEmail`, the endpoint returns HTTP `404`; it does not create a customer automatically.
 Before creating the invoice, the service checks that the mapped QuickBooks Item is active and not a category. If the mapped ID points to a category, it tries to find an active non-category QuickBooks Item with the same Product/Service name. If none exists, the endpoint returns HTTP `400` and the QuickBooks Product/Service mapping must be updated to a sellable item.
 
 Response data:

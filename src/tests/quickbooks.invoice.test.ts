@@ -72,9 +72,10 @@ describe("quickbooks invoice creation", () => {
   });
 
   it("maps product service names to QuickBooks item ids", () => {
-    expect(getQuickBooksItemIdForProductService("Travel")).toBe("5");
+    expect(getQuickBooksItemIdForProductService("Travel")).toBe("28");
+    expect(getQuickBooksItemIdForProductService("Accommodation")).toBe("18");
     expect(getQuickBooksItemIdForProductService("Professional Language Solutions")).toBe(
-      "1010000071"
+      "1010000081"
     );
   });
 
@@ -159,8 +160,8 @@ describe("quickbooks invoice creation", () => {
     quickBooksClient.get.mockResolvedValueOnce({
       data: {
         Item: {
-          Id: "5",
-          Name: "Travel",
+          Id: "28",
+          Name: "Service Fee",
           Active: true,
           Type: "Service"
         }
@@ -200,7 +201,7 @@ describe("quickbooks invoice creation", () => {
           Amount: 3000,
           Description: "Travel coordination service",
           SalesItemLineDetail: {
-            ItemRef: { value: "5" },
+            ItemRef: { value: "28" },
             Qty: 2,
             UnitPrice: 1500
           }
@@ -228,8 +229,8 @@ describe("quickbooks invoice creation", () => {
       .mockResolvedValueOnce({
         data: {
           Item: {
-            Id: "5",
-            Name: "Travel",
+            Id: "28",
+            Name: "Service Fee",
             Active: true,
             Type: "Category"
           }
@@ -293,8 +294,8 @@ describe("quickbooks invoice creation", () => {
       .mockResolvedValueOnce({
         data: {
           Item: {
-            Id: "5",
-            Name: "Travel",
+            Id: "28",
+            Name: "Service Fee",
             Active: true,
             Type: "Category"
           }
